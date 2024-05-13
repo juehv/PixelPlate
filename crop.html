@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Status Page</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+    <style>
+        #gallery img {
+            width: 100px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        #preview {
+            width: 500px;
+            height: 500px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="gallery">
+        <img src="img1.jpg" onclick="preview(this)">
+        <img src="img2.jpg" onclick="preview(this)">
+        <img src="img3.jpg" onclick="preview(this)">
+        <!-- Add more images as needed -->
+    </div>
+    <div id="preview"></div>
+    <button onclick="crop()">Crop</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <script>
+        var cropper;
+        function preview(img) {
+            document.getElementById('preview').innerHTML = '<img src="' + img.src + '">';
+            var image = document.getElementById('preview').getElementsByTagName('img')[0];
+            cropper = new Cropper(image, {
+                aspectRatio: 1
+            });
+        }
+        function crop() {
+            var canvas = cropper.getCroppedCanvas();
+            var croppedImage = canvas.toDataURL('image/png');
+            // croppedImage now contains the data URL of the cropped image
+            // You can display it, send it to a server, etc.
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!--Let browser know website is optimized for mobile-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 100vh;
+            margin: 0;
+            background-color: black;
+        }
+
+        .full-screen-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .full-screen-wrapper {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0);
+            z-index: 30;
+        }
+
+        .loader {
+            position: absolute;
+            margin: auto;
+            top: 50vh;
+            bottom: 50vh;
+            left: 0;
+            right: 0;
+        }
+
+        #camera-stream {
+            width: 100%;
+            height: 100%;
+        }
+
+        #settings-btn {
+            right: auto;
+            left: 20px;
+            transform: none;
+            z-index: 50;
+        }
+
+        #snap-btn {
+            right: auto;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+        }
+
+        #check-btn {
+            display: none;
+            left: auto;
+            right: 20px;
+            z-index: 50;
+        }
+    </style>
+
+</head>
+
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+    <video id="camera-stream" autoplay></video>
+    <div class="fixed-action-btn" id="snap-btn">
+        <a class="btn-floating btn-large red">
+            <i class="large material-icons">photo_camera</i>
+        </a>
+    </div>
+    <!-- <div class="full-screen-wrapper"> -->
+    <div class="fixed-action-btn click-to-toggle" id="settings-btn">
+        <a class="btn-floating btn-large">
+            <i class="large material-icons">settings</i>
+        </a>
+        <ul>
+            <li><a class="btn-floating btn-large yellow" id="flash-btn"><i class="material-icons"
+                        id="flash-icn">flash_off</i></a></li>
+            <li><a class="btn-floating btn-large red darken-1" id="camera-switch-btn"><i
+                        class="material-icons">switch_camera</i></a></li>
+            <!-- <li><a class="btn-floating green"><i class="material-icons">publish</i></a></li>
+            <li><a class="btn-floating blue"><i class="material-icons">attach_file</i></a></li> -->
+        </ul>
+    </div>
+    <!-- </div> -->
+    <div class="fixed-action-btn" id="check-btn">
+        <a class="btn-floating btn-large green">
+            <i class="large material-icons">check</i>
+        </a>
+    </div>
+    <!-- Loading Screen when check button is clicked -->
+    <div id="loading" class="full-screen-modal">
+        <div class="preloader-wrapper big active loader">
+            <div class="spinner-layer spinner-blue-only">
+                <div class="circle-clipper left">
+                    <div class="circle"></div>
+                </div>
+                <div class="gap-patch">
+                    <div class="circle"></div>
+                </div>
+                <div class="circle-clipper right">
+                    <div class="circle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- end loading screen-->
+    <!-- Error message when fetch request is aborted -->
+    <div id="error" class="full-screen-modal">
+        <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <p style="margin-bottom: 20px;" id="error-text">Connection timed out. Please try again.</p>
+            <button onclick="location.reload();"
+                style="background-color: #ff5252; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px;">Reload
+                App</button>
+        </div>
+    </div>
+    <!-- end error message-->
+    <!-- warning message for camera access -->
+    <div id="camera-warning" class="full-screen-modal">
+        <div style="background: white; padding: 20px; border-radius: 8px; text-align: center; width: 70%;">
+            <p class="flow-text" style="margin-bottom: 20px;">Waiting for camera access .... <br /> Without camera
+                access, you won't be able to utilize this app. To grant camera access, click on the icon next to the
+                URL, select "Site settings," then choose "Allow" under "Camera." Refresh the page to activate the
+                changes.</p>
+            <button class="waves-effect waves-light btn red" onclick="location.reload();"><i
+                    class="material-icons left">refresh</i>Reload App</button>
+        </div>
+    </div>
+    <!-- end camera warning-->
+
+    <script>
+        var wasLandscape = false;
+        function checkOrientation() {
+            if (window.screen.orientation.type.startsWith('landscape') && /Mobi|Android/i.test(navigator.userAgent)) {
+                // If it's not in portrait mode, display a message
+                document.body.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; 
+                            font-size: 24px; color: #AAA; text-align: center; background-color: black;">
+                    <p>This application is best viewed in portrait mode. Please rotate your device.</p>
+                </div>
+            `;
+                wasLandscape = true;
+            } else {
+                if (wasLandscape) {
+                    // reload
+                    location.reload();
+                    wasLandscape = false;
+                }
+            }
+        }
+
+        //main method
+        if (!(window.chrome && chrome && !navigator.userAgent.includes("Edg"))) {
+            // If it's not Chrome, display a message
+            document.body.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; 
+                            font-size: 24px; color: #AAA; text-align: center; background-color: black;">
+                    <p>This application is only supported in Google Chrome. Please open this page in Chrome for the best experience.</p>
+                </div>
+            `;
+        } else {
+            // Check the orientation when the page loads
+            checkOrientation();
+
+            // Check the orientation when the device is rotated
+            window.screen.orientation.addEventListener('change', checkOrientation);
+
+            // program logic
+            let videoCanvas = document.getElementById('camera-stream');
+            let snapButton = document.getElementById('snap-btn');
+            let flashButton = document.getElementById('flash-btn');
+            let flashIcon = document.getElementById('flash-icn');
+            let flashEnabled = false;
+            let cameraSwitchButton = document.getElementById('camera-switch-btn');
+            let videoStream;
+
+            // initalize settings menu            
+            document.addEventListener('DOMContentLoaded', function () {
+                var elem = document.querySelector('#settings-btn');
+                var instance = M.FloatingActionButton.init(elem, {
+                    direction: 'top',
+                    hoverEnabled: false
+                });
+            });
+
+            // Show the warning message by default
+            let cameraWarning = document.getElementById('camera-warning');
+            cameraWarning.style.display = 'flex';
+
+            // get video stream from device camera
+            navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            })
+                .then(videoStream => {
+                    // Hide the warning message when the camera access is granted
+                    cameraWarning.style.display = 'none';
+
+                    //setup the video stream
+                    let track = videoStream.getVideoTracks()[0];
+                    let constraints = track.getConstraints();
+                    constraints.torch = true; // seems not to work
+                    videoCanvas.srcObject = videoStream;
+                });
+
+            // pause video stream when the app is not in focus
+            window.addEventListener('blur', function () {
+                var stream = videoCanvas.srcObject;
+                videoCanvas.pause();
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            });
+
+            window.addEventListener('focus', function () {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function (newStream) {
+                        videoCanvas.srcObject = newStream;
+                    })
+                    .catch(function (err) {
+                        console.log('An error occurred: ' + err);
+                    });
+            });
+
+
+            // Add click event to flash button
+            flashButton.addEventListener('click', function () {
+                flashEnabled = !flashEnabled;
+                flashIcon.textContent = flashEnabled ? 'flash_on' : 'flash_off';
+
+                if (videoStream) {
+                    let track = videoStream.getVideoTracks()[0];
+                    let imageCapture = new ImageCapture(track);
+
+                    imageCapture.getPhotoCapabilities().then(function (capabilities) {
+                        if (capabilities.torch) {
+                            track.applyConstraints({
+                                advanced: [{ torch: flashEnabled }]
+                            }).catch(function (error) {
+                                console.error("Error applying tourch constraints: ", error);
+                            });
+                        } else {
+                            console.error("Torch not available");
+                        }
+                    });
+                }
+            });
+
+            // Add click event to camera switch button, iterate through the available cameras
+            cameraSwitchButton.addEventListener('click', function () {
+                if (videoStream) {
+                    let videoTrack = videoStream.getVideoTracks()[0];
+                    videoTrack.stop();
+                }
+
+                navigator.mediaDevices.enumerateDevices()
+                    .then(devices => {
+                        let videoDevices = devices.filter(device => device.kind === 'videoinput');
+                        let currentDeviceId = videoDevices.find(device => device.label === videoCanvas.srcObject.getVideoTracks()[0].label).deviceId;
+                        let nextDevice = videoDevices.find(device => device.deviceId !== currentDeviceId);
+
+                        if (nextDevice) {
+                            navigator.mediaDevices.getUserMedia({
+                                video: {
+                                    deviceId: { exact: nextDevice.deviceId }
+                                }
+                            }).then(stream => {
+                                videoStream = stream;
+                                let track = videoStream.getVideoTracks()[0];
+                                let constraints = track.getConstraints();
+                                constraints.torch = flashEnabled;
+                                videoCanvas.srcObject = videoStream;
+                            });
+                        } else {
+                            navigator.mediaDevices.getUserMedia({ video: true })
+                                .then(stream => {
+                                    videoStream = stream;
+                                    let track = videoStream.getVideoTracks()[0];
+                                    let constraints = track.getConstraints();
+                                    constraints.torch = flashEnabled;
+                                    videoCanvas.srcObject = videoStream;
+                                });
+                        }
+                    });
+            });
+
+            // Create an array to store the last 5 images
+            let lastThreeImages = [];
+
+            snapButton.addEventListener('click', function () {
+                let aspectRatio = videoCanvas.videoWidth / videoCanvas.videoHeight;
+
+                let newWidth, newHeight;
+
+                if (videoCanvas.videoWidth > videoCanvas.videoHeight) {
+                    // Landscape
+                    newWidth = Math.min(videoCanvas.videoWidth, 3840);
+                    newHeight = Math.round(newWidth / aspectRatio);
+                } else {
+                    // Portrait
+                    newHeight = Math.min(videoCanvas.videoHeight, 2160);
+                    newWidth = Math.round(newHeight * aspectRatio);
+                }
+
+                let canvas = document.createElement('canvas');
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+                canvas.getContext('2d').drawImage(videoCanvas, 0, 0, newWidth, newHeight);
+
+                // take a snapshot and get image data
+                let imgData = canvas.toDataURL('image/jpeg');
+
+                // Add the new image to the start of the array
+                let len = lastThreeImages.unshift(imgData);
+
+                // If there are more than 5 images, remove the oldest one
+                if (len > 3) {
+                    lastThreeImages.pop();
+                }
+
+                // Create flash effect
+                let flashEffect = document.createElement('div');
+                flashEffect.style.position = 'absolute';
+                flashEffect.style.top = '0';
+                flashEffect.style.left = '0';
+                flashEffect.style.width = '100%';
+                flashEffect.style.height = '100%';
+                flashEffect.style.backgroundColor = 'white';
+                flashEffect.style.zIndex = '100';
+                document.body.appendChild(flashEffect);
+
+                setTimeout(function () {
+                    // Remove flash effect
+                    document.body.removeChild(flashEffect);
+
+                    // // Remove all existing thumbnails
+                    // let existingThumbnails = document.querySelectorAll('.thumbnail');
+                    // existingThumbnails.forEach(function (thumbnail) {
+                    //     document.body.removeChild(thumbnail);
+                    // });
+
+                    // Remove all existing thumbnails and their containers
+                    let existingContainers = document.querySelectorAll('.thumbnail-container');
+                    existingContainers.forEach(function (container) {
+                        document.body.removeChild(container);
+                    });
+
+                    // Create a single thumbnail-container
+                    let container = document.createElement('div');
+                    container.className = 'thumbnail-container';
+                    container.id = 'thumbnail-container';
+                    container.style.position = 'fixed';
+                    container.style.top = '0';
+                    container.style.left = '0';
+                    container.style.width = '100%'; // Adjust this to change the width of the thumbnails
+                    container.style.height = 'auto'; // This will maintain the correct aspect ratio
+                    container.style.zIndex = '45';
+
+                    // Display the last 5 images as thumbnails at the top
+                    lastThreeImages.forEach(function (imgData, index) {
+                        let imgContainer = document.createElement('div');
+                        imgContainer.style.position = 'relative';
+                        imgContainer.style.width = '33%'; // Adjust this to change the width of the thumbnails
+                        imgContainer.style.height = '100%';
+                        imgContainer.style.float = 'left';
+
+                        let img = document.createElement('img');
+                        img.src = imgData;
+                        img.className = 'thumbnail';
+                        img.style.width = '100%';
+                        img.style.height = 'auto'; //'100%';
+                        img.style.objectFit = 'contain'; // This will ensure that the full image is shown
+                        img.style.border = '2px solid #000'; // Add a border to make the thumbnails stand out
+                        img.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)'; // Add a shadow to give the thumbnails some depth
+
+                        // Create trash button
+                        let trashButton = document.createElement('a');
+                        trashButton.className = 'btn-floating btn-small waves-effect waves-light red';
+                        trashButton.style.position = 'absolute';
+                        trashButton.style.top = '5px';
+                        trashButton.style.right = '5px';
+                        trashButton.style.zIndex = '46';
+
+                        // Create trash icon
+                        let trashIcon = document.createElement('i');
+                        trashIcon.className = 'material-icons';
+                        trashIcon.textContent = 'delete';
+
+                        // Add click event to trash button
+                        trashButton.addEventListener('click', function () {
+                            // Remove the image from the array
+                            lastThreeImages = lastThreeImages.filter(image => image !== imgData);
+                            // Remove the imgContainer element
+                            imgContainer.parentNode.removeChild(imgContainer);
+                            // ipdate check button visibility
+                            updateCheckButtonVisibility();
+                        });
+
+                        // Append trash icon to trash button
+                        trashButton.appendChild(trashIcon);
+
+                        // Append image and trash button to imgContainer
+                        imgContainer.appendChild(img);
+                        imgContainer.appendChild(trashButton);
+
+                        // Append imgContainer to container
+                        container.appendChild(imgContainer);
+                    });
+
+                    // Append container to body
+                    document.body.appendChild(container);
+
+                    // ipdate check button visibility
+                    updateCheckButtonVisibility();
+                }, 100);
+            });
+
+            let checkButton = document.getElementById('check-btn');
+
+            function updateCheckButtonVisibility() {
+                checkButton.style.display = lastThreeImages.length >= 3 ? 'block' : 'none';
+            }
+
+            // Function to convert data URL to Blob
+            function dataURLToBlob(dataurl) {
+                let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+                    bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                return new Blob([u8arr], { type: mime });
+            }
+
+            // handle check button action (upload files to server)
+            let loading = document.getElementById('loading');
+
+            checkButton.addEventListener('click', function () {
+                // Show loading animation
+                loading.style.display = 'block';
+
+                // Create an AbortController instance
+                let controller = new AbortController();
+
+                // Start a timer to abort the fetch request after 20 seconds
+                let timeoutId = setTimeout(() => controller.abort(), 20000);
+
+                // Create a FormData instance
+                let formData = new FormData();
+
+                // Append images to formData
+                lastThreeImages.forEach((image, index) => {
+                    // Convert data URL to Blob
+                    let blob = dataURLToBlob(image);
+
+                    formData.append('images[]', blob, `image${index}.jpg`);
+                });
+
+                // get api key
+                let url = new URL(window.location.href);
+                let params = new URLSearchParams(url.search);
+                let apiKey = params.get('apikey');
+                // Check if apiKey is null, empty or not a valid string
+                if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
+                    apiKey = 'no-key-given';
+                }
+
+                // Send images to server
+                fetch('/img-upld.php', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'x-api-key': apiKey
+                    },
+                    signal: controller.signal
+                }).then(response => {
+                    // Clear the timeout
+                    clearTimeout(timeoutId);
+
+                    if (response.ok) {
+                        // Hide loading animation
+                        loading.style.display = 'none';
+                        // Navigate to status page
+                        window.location.href = '/status-page-url';
+                    } else {
+                        console.log(response);
+                        document.getElementById('error-text').innerText = 'Server Error. Please try again later...';
+                        let errorScreen = document.getElementById('error');
+                        errorScreen.style.display = 'flex';
+                    }
+                }).catch(error => {
+                    // Hide loading animation
+                    loading.style.display = 'none';
+
+                    // Show error message
+                    let errorScreen = document.getElementById('error');
+                    errorScreen.style.display = 'flex';
+
+                    console.error(error.message);
+                });
+            });
+        }
+    </script>
+</body>
+
+</html>
