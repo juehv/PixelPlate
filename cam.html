@@ -30,6 +30,14 @@
             align-items: center;
         }
 
+        .modal-window {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            width: 70%;
+        }
+
         .full-screen-wrapper {
             display: flex;
             position: fixed;
@@ -127,7 +135,7 @@
     <!-- end loading screen-->
     <!-- Error message when fetch request is aborted -->
     <div id="error" class="full-screen-modal">
-        <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+        <div class="modal-window">
             <p style="margin-bottom: 20px;" id="error-text">Connection timed out. Please try again.</p>
             <button onclick="location.reload();"
                 style="background-color: #ff5252; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px;">Reload
@@ -137,7 +145,7 @@
     <!-- end error message-->
     <!-- warning message for camera access -->
     <div id="camera-warning" class="full-screen-modal">
-        <div style="background: white; padding: 20px; border-radius: 8px; text-align: center; width: 70%;">
+        <div class="modal-window">
             <p class="flow-text" style="margin-bottom: 20px;">Waiting for camera access .... <br /> Without camera
                 access, you won't be able to utilize this app. To grant camera access, click on the icon next to the
                 URL, select "Site settings," then choose "Allow" under "Camera." Refresh the page to activate the
@@ -304,7 +312,7 @@
             });
 
             // Create an array to store the last 5 images
-            let lastThreeImages = [];
+            let imgRibbonArray = [];
 
             snapButton.addEventListener('click', function () {
                 let aspectRatio = videoCanvas.videoWidth / videoCanvas.videoHeight;
@@ -330,11 +338,17 @@
                 let imgData = canvas.toDataURL('image/jpeg');
 
                 // Add the new image to the start of the array
-                let len = lastThreeImages.unshift(imgData);
+                let len = imgRibbonArray.unshift(imgData);
 
                 // If there are more than 5 images, remove the oldest one
+                if (len > 5) {
+                    imgRibbonArray.pop();
+                    len = 5;
+                }
+
+                var imgWidth = 33;
                 if (len > 3) {
-                    lastThreeImages.pop();
+                    imgWidth = 100 / len;
                 }
 
                 // Create flash effect
@@ -376,10 +390,10 @@
                     container.style.zIndex = '45';
 
                     // Display the last 5 images as thumbnails at the top
-                    lastThreeImages.forEach(function (imgData, index) {
+                    imgRibbonArray.forEach(function (imgData, index) {
                         let imgContainer = document.createElement('div');
                         imgContainer.style.position = 'relative';
-                        imgContainer.style.width = '33%'; // Adjust this to change the width of the thumbnails
+                        imgContainer.style.width = imgWidth + '%'; // Adjust this to change the width of the thumbnails
                         imgContainer.style.height = '100%';
                         imgContainer.style.float = 'left';
 
@@ -408,7 +422,7 @@
                         // Add click event to trash button
                         trashButton.addEventListener('click', function () {
                             // Remove the image from the array
-                            lastThreeImages = lastThreeImages.filter(image => image !== imgData);
+                            imgRibbonArray = imgRibbonArray.filter(image => image !== imgData);
                             // Remove the imgContainer element
                             imgContainer.parentNode.removeChild(imgContainer);
                             // ipdate check button visibility
@@ -437,7 +451,7 @@
             let checkButton = document.getElementById('check-btn');
 
             function updateCheckButtonVisibility() {
-                checkButton.style.display = lastThreeImages.length >= 3 ? 'block' : 'none';
+                checkButton.style.display = imgRibbonArray.length >= 3 ? 'block' : 'none';
             }
 
             // Function to convert data URL to Blob
@@ -467,7 +481,7 @@
                 let formData = new FormData();
 
                 // Append images to formData
-                lastThreeImages.forEach((image, index) => {
+                imgRibbonArray.forEach((image, index) => {
                     // Convert data URL to Blob
                     let blob = dataURLToBlob(image);
 

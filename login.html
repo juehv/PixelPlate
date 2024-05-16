@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        .container {
+            margin-top: 50px;
+        }
+
+        .intro {
+            margin-bottom: 30px;
+        }
+
+        .token-input {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            box-sizing: border-box;
+            align-items: center;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h4>Welcome to PixelPlate</h4>
+        <p class="intro">You can submit photos of your meals to earn score points or play the estimatation game to chase
+            the high score. Let's get started!</p>
+        <div class="row">
+            <div class="col s12 m4 center-align">
+                <a class="waves-effect waves-light btn-large" id="camera-button"><i
+                        class="material-icons left">camera_alt</i>Camera</a>
+                <p>Submit photos of your meals.</p>
+            </div>
+            <div class="col s12 m4 center-align">
+                <a class="waves-effect waves-light btn-large" id="gallery-button"><i
+                        class="material-icons left">collections</i>Gallery</a>
+                <p>View your photos.</p>
+            </div>
+            <div class="col s12 m4 center-align">
+                <a class="waves-effect waves-light btn-large" id="game-button"><i
+                        class="material-icons left">games</i>Game</a>
+                <p>Chase the high score.</p>
+            </div>
+        </div>
+        <div class="input-field token-input">
+            <button id="toggle_edit" class="btn waves-effect waves-light" style="margin-right: 10px;"><i
+                    class="material-icons">vpn_key</i></button>
+            <div style="flex-grow: 1; display: none;" id="token-input-block">
+                <label for="access_token">Access Token</label>
+                <input id="access_token" type="text" class="validate" style="width: 85%;">
+            </div>
+        </div>
+        <script>
+            // initialiaze the token input field with the value from local storage
+            document.addEventListener('DOMContentLoaded', function () {
+                var tokenInput = document.getElementById('access_token');
+                var savedToken = localStorage.getItem('access_token');
+                if (savedToken) {
+                    tokenInput.value = savedToken;
+                }
+            });
+
+            // Save the token in local storage when it's entered
+            document.getElementById('access_token').addEventListener('change', function () {
+                localStorage.setItem('access_token', this.value);
+            });
+
+            // check if the token is valid            
+            document.getElementById('access_token').addEventListener('input', function () {
+                var isValid = tokenValidCheck(this.value);
+                if (isValid) {
+                    this.classList.remove('invalid');
+                    this.classList.add('valid');
+                } else {
+                    this.classList.remove('valid');
+                    this.classList.add('invalid');
+                }
+            });
+
+            function tokenValidCheck(value) {
+                //TODO implement this
+                // Replace this with your own validation logic
+                console.log('Checking token:', value);
+                //randomly return true or false
+                return Math.random() > 0.5;
+            }
+
+            // Toggle the input field visible and invisible
+            var toggleButton = document.getElementById('toggle_edit');
+            toggleButton.addEventListener('click', function () {
+                var inputBlock = document.getElementById('token-input-block');
+                var display = inputBlock.style.display === 'none' ? '' : 'none';
+                inputBlock.style.display = display;
+            });
+
+            // button functionality
+            var token = localStorage.getItem('access_token');
+            var cameraButton = document.getElementById('camera-button');
+            var galleryButton = document.getElementById('gallery-button');
+            var gameButton = document.getElementById('game-button');
+
+            cameraButton.href = './cam.html?key=' + encodeURIComponent(token);
+            galleryButton.href = './gallery.html?key=' + encodeURIComponent(token);
+            gameButton.href = './game.html?key=' + encodeURIComponent(token);
+        </script>
+</body>
+
+</html>
